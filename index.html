@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Coach</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Chess Coach</h1>
+      <nav class="tabs">
+        <button data-tab="play" class="active">Play</button>
+        <button data-tab="homework">Homework <span id="hw-count" class="badge"></span></button>
+      </nav>
+    </header>
+    <main>
+      <section class="left">
+        <div class="board-wrap">
+          <div id="evalbar"><div id="evalfill"></div><span id="evaltext">0.0</span></div>
+          <div id="board"></div>
+        </div>
+        <div id="controls" class="controls">
+          <label>You play
+            <select id="color">
+              <option value="w">White</option>
+              <option value="b">Black</option>
+            </select>
+          </label>
+          <label>Opponent
+            <select id="level">
+              <option value="1">Park rookie</option>
+              <option value="5">Weekend regular</option>
+              <option value="10" selected>Club player</option>
+              <option value="15">Park hustler</option>
+              <option value="20">Full Stockfish</option>
+            </select>
+          </label>
+          <button id="new">New game</button>
+          <button id="hint">Hint</button>
+          <button id="undo">Take back</button>
+          <button id="flip">Flip</button>
+        </div>
+        <div id="drill-controls" class="controls hidden">
+          <button id="drill-show">Show me</button>
+          <button id="drill-exit">Back to game</button>
+        </div>
+      </section>
+      <section class="right">
+        <div id="panel-play" class="panel">
+          <div id="status" class="status">Loading engine...</div>
+          <ol id="feed" class="feed"></ol>
+        </div>
+        <div id="panel-homework" class="panel hidden">
+          <p class="muted">
+            Every mistake or blunder you make becomes homework. Solve it here until it sticks.
+          </p>
+          <ul id="hw-list" class="hw-list"></ul>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
