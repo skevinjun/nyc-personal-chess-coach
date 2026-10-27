@@ -16,6 +16,9 @@ import {
 } from "./coach";
 import { claudeEnabled, explainMove, getApiKey, setApiKey } from "./claudeCoach";
 import { Engine } from "./engine";
+import { material } from "./material";
+import { say } from "./persona";
+import { getVoiceName, isMuted, listVoices, sanToSpeech, setMuted, setVoiceName, speak } from "./speech";
 import type { PvLine } from "./uci";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -62,9 +65,26 @@ function lastMoveOf(chess: Chess) {
   return m ? { from: m.from, to: m.to } : null;
 }
 
+const GLYPH: Record<string, string> = { q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+
+/** Captured pieces above and below the board, with the points lead. */
+function renderCaptures(fen: string, bottom: Color) {
+  const m = material(fen);
+  const top: Color = bottom === "w" ? "b" : "w";
+  const row = (side: Color) => {
+    const victimColor = side === "w" ? "black" : "white";
+    const pieces = m.captured[side].map((p) => `<span class="pc ${victimColor}">${GLYPH[p]}</span>`).join("");
+    const lead = side === "w" ? m.diff : -m.diff;
+    return pieces + (lead > 0 ? `<span class="lead">+${lead}</span>` : "");
+  };
+  $("cap-top").innerHTML = row(top);
+  $("cap-bottom").innerHTML = row(bottom);
+}
+
 function renderBoard(highlight: string[] = []) {
   if (mode === "drill" && drill) {
     const side = new Chess(drill.a.fen).turn();
+    renderCaptures(drill.chess.fen(), side);
     board.set({
       fen: drill.chess.fen(),
       orientation: side,
@@ -75,6 +95,7 @@ function renderBoard(highlight: string[] = []) {
     return;
   }
   const canMove = !thinking && !game.isGameOver() && game.turn() === playerColor;
+  renderCaptures(game.fen(), orientation);
   board.set({ fen: game.fen(), orientation, movable: canMove ? playerColor : null, lastMove: lastMoveOf(game), highlight });
 }
 
@@ -141,11 +162,9 @@ async function newGame() {
   setStatus("Setting up the board...");
   await opponent.setOption("Skill Level", level);
   if (myGen !== gen) return;
-  post(
-    "coach",
-    "Alright, sit down. I'll call every move you make, good or bad. Mistakes go in your homework. " +
-      "Before each move: checks, captures, threats. Let's go.",
-  );
+  const intro = say("intro");
+  post("coach", `${intro} Mistakes go in your homework. Before each move: checks, captures, threats.`);
+  speak(intro, { interrupt: true });
   if (playerColor === "b") await engineMove();
   else startPlayerTurn();
 }
@@ -156,7 +175,9 @@ async function startPlayerTurn() {
   hintStage = 0;
   renderBoard();
   setStatus(`Your move (${playerColor === "w" ? "White" : "Black"}).`);
-  for (const w of threatWarnings(game)) post("warn", w);
+  const warnings = threatWarnings(game);
+  for (const w of warnings) post("warn", w);
+  if (warnings[0]) speak(`${say("warning")} ${warnings[0].replace(/^Heads up: your/, "Your")}`);
   const lines = await analyze(game.fen());
   if (myGen !== gen) return;
   updateEval(lines, game.fen());
@@ -179,11 +200,13 @@ async function onPlayMove(m: BoardMove) {
   stats[review.verdict]++;
   const card = postReview(review, moveNo);
   if (after[0]) updateEval(after, game.fen());
+  speak(spokenReview(review), { interrupt: true });
+  let claudeNote: Promise<void> = Promise.resolve();
   if (claudeEnabled()) {
     const history = new Chess();
     const pgnBefore = game.history().slice(0, -1);
     for (const san of pgnBefore) history.move(san);
-    addClaudeNote(card, {
+    claudeNote = addClaudeNote(card, {
       playerRating: PLAYER_RATING,
       playerColor: playerColor === "w" ? "White" : "Black",
       pgn: history.pgn().replace(/\[[^\]]*\]\s*/g, "").replace(/\s*\*$/, ""),
@@ -214,7 +237,23 @@ async function onPlayMove(m: BoardMove) {
   }
 
   if (game.isGameOver()) return endGame();
+  // Let the coach finish talking before the opponent moves, like a real lesson (but never stall the game).
+  await Promise.race([claudeNote, new Promise((r) => setTimeout(r, 10000))]);
+  if (myGen !== gen) return;
   await engineMove();
+}
+
+/** What the coach says out loud about a move: the reaction, then the one thing that matters. */
+function spokenReview(r: MoveReview): string {
+  const parts = [r.lines[0]];
+  if (!claudeEnabled()) {
+    const problem = r.lines.find((l) => l.startsWith("The problem"));
+    if (problem) parts.push(problem);
+    if (r.bestSan && r.bestSan !== r.san && r.verdict !== "best" && r.verdict !== "excellent") {
+      parts.push(`Better was ${r.bestSan}.`);
+    }
+  }
+  return parts.join(" ");
 }
 
 /** Claude's take arrives a few seconds later; the game doesn't wait for it. */
@@ -231,6 +270,7 @@ async function addClaudeNote(card: HTMLLIElement, facts: Parameters<typeof expla
     }
     p.className = "claude";
     p.innerHTML = escapeHtml(text).replace(/\n+/g, "<br>");
+    speak(text);
   } catch (e) {
     p.className = "claude error";
     p.textContent = `${(e as Error).message} Check it in Settings.`;
@@ -248,6 +288,8 @@ async function engineMove() {
   if (myGen !== gen || !uci) return;
   const move = game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
   post("opp", `Opponent plays <b>${move.san}</b>: ${describeMove(move)}.`);
+  const lead = move.san.includes("+") ? say("opponentCheck") : move.captured ? say("opponentCapture") : say("opponentMove");
+  speak(`${lead} ${sanToSpeech(move.san)}.`);
   if (game.isGameOver()) return endGame();
   startPlayerTurn();
 }
@@ -264,6 +306,8 @@ function endGame() {
   else if (game.isInsufficientMaterial()) result = "Draw, insufficient material.";
   else result = "Draw.";
   setStatus(result);
+  const outro = game.isCheckmate() ? say(game.turn() !== playerColor ? "win" : "loss") : say("draw");
+  speak(outro);
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
   const solid = stats.best + stats.excellent + stats.good;
   const errors = stats.mistake + stats.blunder;
@@ -277,7 +321,7 @@ function endGame() {
       : `${errors} serious error${errors === 1 ? "" : "s"}. They're in your homework. Do it before the next game.`;
   post(
     "coach",
-    `<b>${result}</b><p>${total} moves: ${summary || "none"}. ${solid} of ${total} were solid.</p><p>${verdict}</p>`,
+    `<b>${result}</b><p class="voice">${outro}</p><p>${total} moves: ${summary || "none"}. ${solid} of ${total} were solid.</p><p>${verdict}</p>`,
   );
 }
 
@@ -291,12 +335,15 @@ async function hint() {
   if (myGen !== gen || !lines[0]?.pv[0]) return;
   const best = lines[0].pv[0];
   if (hintStage === 0) {
-    post("hint", hintNudge(fen, best));
+    const nudge = `${say("hint")} ${hintNudge(fen, best)}`;
+    post("hint", nudge);
+    speak(nudge, { interrupt: true });
     renderBoard([best.slice(0, 2)]);
     hintStage = 1;
   } else {
     const move = uciToMove(fen, best)!;
     post("hint", `Fine. Play <b>${move.san}</b>. Evaluation: ${formatScore(lines[0].score, chess.turn(), chess.turn())}.`);
+    speak(`Fine. Play ${move.san}.`, { interrupt: true });
     renderBoard([best.slice(0, 2), best.slice(2, 4)]);
   }
 }
@@ -306,7 +353,9 @@ function takeBack() {
   gen++;
   game.undo();
   while (game.turn() !== playerColor && game.history().length > 0) game.undo();
-  post("note", "Took it back. In the park that'd cost you extra.");
+  const quip = say("takeBack");
+  post("note", quip);
+  speak(quip, { interrupt: true });
   if (game.turn() !== playerColor) engineMove();
   else startPlayerTurn();
 }
@@ -373,14 +422,18 @@ async function onDrillMove(m: BoardMove) {
   thinking = false;
   if (review.verdict === "best" || review.verdict === "excellent") {
     d.a.solved = true;
-    post("review best", `<span class="tag best">Solved</span> <b>${move.san}</b><p>That's it. Remember the pattern.</p>`);
+    const cheer = say("drillSolved");
+    post("review best", `<span class="tag best">Solved</span> <b>${move.san}</b><p class="voice">${cheer}</p>`);
+    speak(cheer, { interrupt: true });
     setStatus("Solved. Pick another from Homework, or go back to your game.");
   } else {
     d.fails++;
     const problem = review.lines.find((l) => l.startsWith("The problem")) ?? "";
+    const jab = say("drillMissed");
+    speak(`${jab} ${problem}`, { interrupt: true });
     post(
       "review mistake",
-      `<span class="tag mistake">Not it</span> <b>${move.san}</b><p>${problem}</p>` +
+      `<span class="tag mistake">Not it</span> <b>${move.san}</b><p class="voice">${jab}</p><p>${problem}</p>` +
         (d.fails >= 2 ? "<p>Stuck? Use Hint, or Show me.</p>" : "<p>Try again.</p>"),
     );
     d.chess.undo();
@@ -396,6 +449,7 @@ function showSolution() {
   const move = uciToMove(drill.a.fen, drill.a.solution);
   if (!move) return;
   post("hint", `The answer: <b>${move.san}</b> (${describeMove(move)}). Play it on the board so it sticks.`);
+  speak(`The answer is ${move.san}. Play it so it sticks.`, { interrupt: true });
   renderBoard([move.from, move.to]);
 }
 
@@ -434,7 +488,32 @@ document.querySelectorAll<HTMLElement>("[data-tab]").forEach((b) => b.addEventLi
 $("drill-controls").insertAdjacentHTML("afterbegin", '<button id="drill-hint">Hint</button>');
 $("drill-hint").addEventListener("click", () => hint());
 
+function renderMute() {
+  $("mute").textContent = isMuted() ? "🔇 Coach muted" : "🔊 Coach talking";
+}
+$("mute").addEventListener("click", () => {
+  setMuted(!isMuted());
+  renderMute();
+  if (!isMuted()) speak("I'm back. Let's work.", { interrupt: true });
+});
+renderMute();
+
+function renderVoices() {
+  const select = $("voice") as HTMLSelectElement;
+  const voices = listVoices();
+  select.innerHTML =
+    '<option value="">Browser default</option>' +
+    voices.map((v) => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join("");
+  select.value = getVoiceName();
+}
+if ("speechSynthesis" in window) speechSynthesis.addEventListener("voiceschanged", renderVoices);
+$("voice-test").addEventListener("click", () => {
+  setVoiceName(($("voice") as HTMLSelectElement).value);
+  speak(say("blunder"), { interrupt: true });
+});
+
 function openSettings() {
+  renderVoices();
   ($("api-key") as HTMLInputElement).value = getApiKey();
   $("settings").classList.remove("hidden");
 }
@@ -443,6 +522,7 @@ $("settings-open").addEventListener("click", () => openSettings());
 $("settings-close").addEventListener("click", () => $("settings").classList.add("hidden"));
 $("settings-save").addEventListener("click", () => {
   setApiKey(($("api-key") as HTMLInputElement).value);
+  setVoiceName(($("voice") as HTMLSelectElement).value);
   $("settings").classList.add("hidden");
   post("note", claudeEnabled() ? "Claude coaching is on. Explanations arrive a few seconds after each move." : "Claude coaching is off.");
 });

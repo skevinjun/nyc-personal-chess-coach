@@ -431,3 +431,33 @@ select {
   background: var(--bg);
   color: var(--ink);
 }
+
+.captures {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-height: 26px;
+  margin: 2px 0 2px 30px;
+}
+
+.captures .pc {
+  font-size: 20px;
+}
+
+.captures .lead {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.voice-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 14px;
+}
+
+.voice-row select {
+  flex: 1;
+  min-width: 0;
+}
