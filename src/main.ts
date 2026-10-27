@@ -5,6 +5,7 @@ import {
   describeMove,
   formatScore,
   hintNudge,
+  pvToSan,
   reviewMove,
   scoreToCp,
   threatWarnings,
@@ -13,6 +14,7 @@ import {
   type MoveReview,
   type Verdict,
 } from "./coach";
+import { claudeEnabled, explainMove, getApiKey, setApiKey } from "./claudeCoach";
 import { Engine } from "./engine";
 import type { PvLine } from "./uci";
 
@@ -32,6 +34,9 @@ let hintStage = 0;
 let stats = emptyStats();
 let homework = loadAssignments();
 let drill: { a: Assignment; chess: Chess; fails: number } | null = null;
+
+/** Kevin's Chess.com rating; used to pitch Claude's explanations. */
+const PLAYER_RATING = 1200;
 
 const analysisCache = new Map<string, Promise<PvLine[]>>();
 
@@ -77,13 +82,18 @@ function setStatus(text: string) {
   $("status").textContent = text;
 }
 
-function post(kind: string, html: string) {
+function post(kind: string, html: string): HTMLLIElement {
   const li = document.createElement("li");
   li.className = `msg ${kind}`;
   li.innerHTML = html;
   const feed = $("feed");
   feed.appendChild(li);
   feed.scrollTop = feed.scrollHeight;
+  return li;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 }
 
 const VERDICT_LABEL: Record<Verdict, string> = {
@@ -95,9 +105,9 @@ const VERDICT_LABEL: Record<Verdict, string> = {
   blunder: "Blunder",
 };
 
-function postReview(r: MoveReview, moveNo: number) {
+function postReview(r: MoveReview, moveNo: number): HTMLLIElement {
   const [voice, ...rest] = r.lines;
-  post(
+  return post(
     `review ${r.verdict}`,
     `<div class="head"><span class="tag ${r.verdict}">${VERDICT_LABEL[r.verdict]}</span> <b>${moveNo}. ${r.san}</b></div>` +
       `<p class="voice">${voice}</p>` +
@@ -167,8 +177,28 @@ async function onPlayMove(m: BoardMove) {
 
   const review = reviewMove(fenBefore, move.lan, before, after[0] ?? null);
   stats[review.verdict]++;
-  postReview(review, moveNo);
+  const card = postReview(review, moveNo);
   if (after[0]) updateEval(after, game.fen());
+  if (claudeEnabled()) {
+    const history = new Chess();
+    const pgnBefore = game.history().slice(0, -1);
+    for (const san of pgnBefore) history.move(san);
+    addClaudeNote(card, {
+      playerRating: PLAYER_RATING,
+      playerColor: playerColor === "w" ? "White" : "Black",
+      pgn: history.pgn().replace(/\[[^\]]*\]\s*/g, "").replace(/\s*\*$/, ""),
+      fenBefore,
+      moveNo,
+      san: review.san,
+      verdict: review.verdict,
+      winBefore: review.winBefore,
+      winAfter: review.winAfter,
+      bestSan: review.bestSan,
+      bestLine: before[0] ? pvToSan(fenBefore, before[0].pv, 6) : [],
+      replyLine: after[0] ? pvToSan(game.fen(), after[0].pv, 6) : [],
+      notes: review.lines.slice(1),
+    });
+  }
 
   if ((review.verdict === "mistake" || review.verdict === "blunder") && before[0]?.pv[0]) {
     homework = addFromGame(
@@ -185,6 +215,28 @@ async function onPlayMove(m: BoardMove) {
 
   if (game.isGameOver()) return endGame();
   await engineMove();
+}
+
+/** Claude's take arrives a few seconds later; the game doesn't wait for it. */
+async function addClaudeNote(card: HTMLLIElement, facts: Parameters<typeof explainMove>[0]) {
+  const p = document.createElement("p");
+  p.className = "claude pending";
+  p.textContent = "Coach is thinking it over...";
+  card.appendChild(p);
+  try {
+    const text = await explainMove(facts);
+    if (!text) {
+      p.remove();
+      return;
+    }
+    p.className = "claude";
+    p.innerHTML = escapeHtml(text).replace(/\n+/g, "<br>");
+  } catch (e) {
+    p.className = "claude error";
+    p.textContent = `${(e as Error).message} Check it in Settings.`;
+  }
+  const feed = $("feed");
+  feed.scrollTop = feed.scrollHeight;
 }
 
 async function engineMove() {
@@ -381,6 +433,19 @@ document.querySelectorAll<HTMLElement>("[data-tab]").forEach((b) => b.addEventLi
 // Drill hints reuse the same Hint flow.
 $("drill-controls").insertAdjacentHTML("afterbegin", '<button id="drill-hint">Hint</button>');
 $("drill-hint").addEventListener("click", () => hint());
+
+function openSettings() {
+  ($("api-key") as HTMLInputElement).value = getApiKey();
+  $("settings").classList.remove("hidden");
+}
+
+$("settings-open").addEventListener("click", () => openSettings());
+$("settings-close").addEventListener("click", () => $("settings").classList.add("hidden"));
+$("settings-save").addEventListener("click", () => {
+  setApiKey(($("api-key") as HTMLInputElement).value);
+  $("settings").classList.add("hidden");
+  post("note", claudeEnabled() ? "Claude coaching is on. Explanations arrive a few seconds after each move." : "Claude coaching is off.");
+});
 
 renderHomework();
 newGame();

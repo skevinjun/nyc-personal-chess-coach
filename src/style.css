@@ -384,3 +384,50 @@ select {
   color: var(--muted);
   margin-left: 6px;
 }
+
+.msg .claude {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.msg .claude.pending {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.msg .claude.error {
+  border-left-color: var(--blunder);
+  color: var(--blunder);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.modal .panel {
+  width: min(460px, 100%);
+}
+
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.modal input {
+  width: 100%;
+  font: inherit;
+  padding: 8px;
+  margin: 6px 0;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}

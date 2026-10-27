@@ -12,6 +12,7 @@
       <nav class="tabs">
         <button data-tab="play" class="active">Play</button>
         <button data-tab="homework">Homework <span id="hw-count" class="badge"></span></button>
+        <button id="settings-open">Settings</button>
       </nav>
     </header>
     <main>
@@ -30,8 +31,10 @@
           <label>Opponent
             <select id="level">
               <option value="1">Park rookie</option>
-              <option value="5">Weekend regular</option>
-              <option value="10" selected>Club player</option>
+              <option value="3">Casual (~1000)</option>
+              <option value="5" selected>Your level (~1200)</option>
+              <option value="8">Stretch (~1500)</option>
+              <option value="10">Club player</option>
               <option value="15">Park hustler</option>
               <option value="20">Full Stockfish</option>
             </select>
@@ -59,6 +62,21 @@
         </div>
       </section>
     </main>
+    <div id="settings" class="modal hidden">
+      <div class="panel">
+        <h2>Settings</h2>
+        <label for="api-key">Anthropic API key (optional)</label>
+        <input id="api-key" type="password" placeholder="sk-ant-..." autocomplete="off" />
+        <p class="muted">
+          With a key, Claude writes a short coaching note on every move, on top of the engine verdict.
+          The key stays in this browser and is only sent to api.anthropic.com. Leave it empty to turn this off.
+        </p>
+        <div class="controls">
+          <button id="settings-save">Save</button>
+          <button id="settings-close">Cancel</button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
