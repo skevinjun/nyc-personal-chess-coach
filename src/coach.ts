@@ -2,6 +2,7 @@
 // Everything here is pure so it can be unit tested without an engine.
 
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from "chess.js";
+import { say } from "./persona";
 import type { PvLine, Score } from "./uci";
 
 export type Verdict = "best" | "excellent" | "good" | "inaccuracy" | "mistake" | "blunder";
@@ -116,36 +117,6 @@ export function describeMove(move: Move): string {
   return parts.join(", ");
 }
 
-const VOICE: Record<Verdict, string[]> = {
-  best: [
-    "That's the move. Even I'd have played it.",
-    "Engine's top choice. Don't let it go to your head.",
-    "Clean. That's how you take a man's lunch money.",
-  ],
-  excellent: ["Strong move. Nearly as good as the best.", "Solid. No complaints from this side of the table."],
-  good: ["Playable. There was something a little sharper.", "Fine, but you left a bit on the table."],
-  inaccuracy: [
-    "Inaccuracy. Not a disaster, but a real player punishes that.",
-    "Loose. You're giving away little edges, and little edges add up.",
-  ],
-  mistake: [
-    "That's a mistake. In the park that costs you five bucks.",
-    "Mistake. You had better, and you know it.",
-  ],
-  blunder: [
-    "Blunder. I used to make my rent off moves like that.",
-    "Oof. That's a blunder. Sit up straight and look at the board.",
-    "Blunder. Slow down. Checks, captures, threats. Every move.",
-  ],
-};
-
-export function voiceLine(verdict: Verdict, seed: string): string {
-  const lines = VOICE[verdict];
-  let h = 0;
-  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) | 0;
-  return lines[Math.abs(h) % lines.length];
-}
-
 export interface MoveReview {
   verdict: Verdict;
   san: string;
@@ -181,7 +152,7 @@ export function reviewMove(fenBefore: string, uci: string, before: PvLine[], aft
   const winAfter = winPercent(cpAfter);
   const verdict = classify(winBefore - winAfter, playedBest);
 
-  const lines: string[] = [voiceLine(verdict, fenBefore + uci)];
+  const lines: string[] = [say(verdict)];
   lines.push(`You played ${move.san}: ${describeMove(move)}.`);
 
   if (verdict === "inaccuracy" || verdict === "mistake" || verdict === "blunder") {
@@ -210,7 +181,7 @@ export function reviewMove(fenBefore: string, uci: string, before: PvLine[], aft
     lines.push(`Better was ${bestMove.san} (${why}). Main line: ${bestLine}.`);
   }
 
-  if (board.isCheckmate()) lines.push("And that's checkmate. Shake hands, collect your money.");
+  
 
   return {
     verdict,

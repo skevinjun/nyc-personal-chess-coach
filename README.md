@@ -5,6 +5,9 @@ Interactive chess coach to up-level the user's chess game. Careful- he's a forme
 ## What it does
 
 - **Play 1:1** against Stockfish at five strengths, from "Park rookie" to full strength.
+- **A coach with attitude**: half Washington Square hustler, half tough-love boxing trainer. Lines rotate so they don't repeat.
+- **The coach talks**: every move, warning, hint and result is read aloud with the browser's text-to-speech. Mute button under the board; pick the voice in Settings.
+- **Captured pieces and points lead** above and below the board (pawn 1, knight 3, bishop 3, rook 5, queen 9).
 - **Every move gets a verdict** (Best, Excellent, Good, Inaccuracy, Mistake, Blunder) with a plain-English reason: what your move did, how the opponent punishes it, and what was better, with the main line.
 - **Heads-up warnings** on your turn when one of your pieces is hanging.
 - **Two-step hints**: first which piece to look at, then the move.
@@ -34,6 +37,9 @@ npm run build    # static site in dist/
 | `src/engine.ts` | Promise wrapper around the Stockfish worker (UCI). |
 | `src/uci.ts` | Parses engine output. |
 | `src/board.ts` | Click-to-move board with legal-move dots and promotion picker. |
+| `src/persona.ts` | The coach's lines, drawn without repeats. |
+| `src/speech.ts` | Text-to-speech, including saying moves in words ("knight takes e5, check"). |
+| `src/material.ts` | Captured pieces and the points tally. |
 | `src/claudeCoach.ts` | Optional Claude-written explanations (prompt + API call). |
 | `src/assignments.ts` | Homework store and the classic puzzles. |
 | `src/main.ts` | Wires the game, coach feed, hints and drills together. |
