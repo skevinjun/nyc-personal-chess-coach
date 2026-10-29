@@ -6,7 +6,7 @@ Interactive chess coach to up-level the user's chess game. Careful- he's a forme
 
 - **Play 1:1** against Stockfish at five strengths, from "Park rookie" to full strength.
 - **A coach with attitude**: half Washington Square hustler, half tough-love boxing trainer. Lines rotate so they don't repeat.
-- **The coach talks**: every move, warning, hint and result is read aloud with the browser's text-to-speech. Mute button under the board; pick the voice in Settings.
+- **The coach talks**: every move, warning, hint and result is read aloud. With an OpenAI key in Settings, OpenAI's `gpt-4o-mini-tts` voices him as a gravelly old New York boxing trainer (about 1.5¢ per minute of speech); without one, the most natural browser voice is used. The key stays in your browser. Mute button under the board.
 - **Captured pieces and points lead** above and below the board (pawn 1, knight 3, bishop 3, rook 5, queen 9).
 - **Every move gets a verdict** (Best, Excellent, Good, Inaccuracy, Mistake, Blunder) with a plain-English reason: what your move did, how the opponent punishes it, and what was better, with the main line.
 - **Heads-up warnings** on your turn when one of your pieces is hanging.
