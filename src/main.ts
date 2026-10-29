@@ -18,7 +18,18 @@ import { claudeEnabled, explainMove, getApiKey, setApiKey } from "./claudeCoach"
 import { Engine } from "./engine";
 import { material } from "./material";
 import { say } from "./persona";
-import { getVoiceName, isMuted, listVoices, sanToSpeech, setMuted, setVoiceName, speak } from "./speech";
+import {
+  getOpenAiKey,
+  getVoiceName,
+  isMuted,
+  listVoices,
+  onNaturalVoiceError,
+  sanToSpeech,
+  setMuted,
+  setOpenAiKey,
+  setVoiceName,
+  speak,
+} from "./speech";
 import type { PvLine } from "./uci";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -502,19 +513,21 @@ function renderVoices() {
   const select = $("voice") as HTMLSelectElement;
   const voices = listVoices();
   select.innerHTML =
-    '<option value="">Browser default</option>' +
+    '<option value="">Most natural available</option>' +
     voices.map((v) => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join("");
   select.value = getVoiceName();
 }
 if ("speechSynthesis" in window) speechSynthesis.addEventListener("voiceschanged", renderVoices);
 $("voice-test").addEventListener("click", () => {
   setVoiceName(($("voice") as HTMLSelectElement).value);
+  setOpenAiKey(($("openai-key") as HTMLInputElement).value);
   speak(say("blunder"), { interrupt: true });
 });
 
 function openSettings() {
   renderVoices();
   ($("api-key") as HTMLInputElement).value = getApiKey();
+  ($("openai-key") as HTMLInputElement).value = getOpenAiKey();
   $("settings").classList.remove("hidden");
 }
 
@@ -523,8 +536,18 @@ $("settings-close").addEventListener("click", () => $("settings").classList.add(
 $("settings-save").addEventListener("click", () => {
   setApiKey(($("api-key") as HTMLInputElement).value);
   setVoiceName(($("voice") as HTMLSelectElement).value);
+  setOpenAiKey(($("openai-key") as HTMLInputElement).value);
   $("settings").classList.add("hidden");
-  post("note", claudeEnabled() ? "Claude coaching is on. Explanations arrive a few seconds after each move." : "Claude coaching is off.");
+  const notes = claudeEnabled() ? "Claude notes on." : "Claude notes off.";
+  const voice = getOpenAiKey() ? "Coach voice: old New York trainer (OpenAI)." : "Coach voice: browser.";
+  post("note", `Settings saved. ${notes} ${voice}`);
+});
+
+let voiceErrorShown = false;
+onNaturalVoiceError((message) => {
+  if (voiceErrorShown) return;
+  voiceErrorShown = true;
+  post("note", `${message} Using the browser voice for now. Check the OpenAI key in Settings.`);
 });
 
 renderHomework();

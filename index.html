@@ -68,7 +68,13 @@
     <div id="settings" class="modal hidden">
       <div class="panel">
         <h2>Settings</h2>
-        <label for="voice">Coach's voice</label>
+        <label for="openai-key">OpenAI API key for the real coach voice (optional)</label>
+        <input id="openai-key" type="password" placeholder="sk-..." autocomplete="off" />
+        <p class="muted">
+          With a key, the coach is voiced by OpenAI's speech model as a gravelly old New York boxing trainer.
+          Roughly a cent or two per game. The key stays in this browser and only goes to api.openai.com.
+        </p>
+        <label for="voice">Browser voice (used without a key)</label>
         <div class="voice-row">
           <select id="voice"></select>
           <button id="voice-test">Test</button>

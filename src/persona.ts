@@ -20,6 +20,8 @@ export type Moment =
 
 export const LINES: Record<Moment, string[]> = {
   intro: [
+    "Hey, kid! Siddown. I been waitin' all day. Let's see them hands.",
+    "Welcome to the gym, pal. No crying, no excuses. We go.",
     "Alright champ, gloves on. I call every move, good or bad. No crying.",
     "Sit down, put your money on the table. Let's see what you got.",
     "Ding ding! Round one. Keep your hands up and your eyes on the board.",
@@ -27,6 +29,8 @@ export const LINES: Record<Moment, string[]> = {
     "Same rules as the gym: you work, I talk. Let's go.",
   ],
   best: [
+    "Atta boy! That's what I'm talkin' about!",
+    "Beautiful! Like Sugar Ray in his prime!",
     "That's the move! Even I'd have played it.",
     "Boom! Right on the chin. Beautiful.",
     "Clean shot. That's how you take a man's lunch money.",
@@ -39,6 +43,7 @@ export const LINES: Record<Moment, string[]> = {
     "Stick and move, baby. Stick and move.",
   ],
   excellent: [
+    "Not bad, kid. Not bad at all.",
     "Strong move. You're light on your feet today.",
     "Good hands. Nearly perfect.",
     "Solid. No complaints from my corner.",
@@ -47,6 +52,7 @@ export const LINES: Record<Moment, string[]> = {
     "Yeah, I like that. Stay sharp.",
   ],
   good: [
+    "Eh, it's okay. You're dancin', but you ain't punchin'.",
     "Playable. But you left something on the table.",
     "Fine. Fine is how you lose on points, though.",
     "Okay, okay. There was a sharper punch.",
@@ -55,6 +61,7 @@ export const LINES: Record<Moment, string[]> = {
     "Eh. A little lazy. Wake up.",
   ],
   inaccuracy: [
+    "Whaddaya doin'? Tighten it up!",
     "Sloppy! You're dropping your guard.",
     "Inaccuracy. A real hustler eats that for breakfast.",
     "Loose. Little edges add up, and you just gave one away.",
@@ -63,6 +70,8 @@ export const LINES: Record<Moment, string[]> = {
     "Hmm. In my day that costs you a dollar.",
   ],
   mistake: [
+    "Hey! Whaddaya, sleepin'? Wake up!",
+    "Fuhgeddaboudit. That one's gonna cost ya.",
     "Mistake! That's five bucks in the park, pal.",
     "You walked right into that one. Head on a swivel!",
     "Mistake. You had better and you know it.",
@@ -72,6 +81,8 @@ export const LINES: Record<Moment, string[]> = {
     "That's a mistake. I've seen pigeons play better. Okay, not really. But close.",
   ],
   blunder: [
+    "Oh, come on! My grandmother sees that, and she's been dead twenty years!",
+    "Get up, kid! Get off the canvas! Again!",
     "Blunder! I used to make my rent off moves like that!",
     "Oh no. Oh no no no. You just got knocked down.",
     "Blunder! Checks, captures, threats! Every! Single! Move!",
@@ -114,11 +125,13 @@ export const LINES: Record<Moment, string[]> = {
     "Coach says:",
   ],
   win: [
+    "That's my fighter! Drinks are on me, kid!",
     "Checkmate! Raise that glove! You're the champ!",
     "Knockout! Shake hands and take the money.",
     "Winner winner! That's how we do it in the park.",
   ],
   loss: [
+    "Ya got knocked out, kid. Tomorrow we're back in the gym, six a.m.",
     "You got knocked out. It happens. Now we go back to the gym.",
     "That's a loss, champ. Every great fighter has a few. Learn from it.",
     "Down for the count. Wipe your face, do your homework, run it back.",
